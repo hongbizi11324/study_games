@@ -1,0 +1,4 @@
+repository "ZaoMengxiyou@tj_hongbizi@cloud.cn"
+  path "/"
+    br "/main"
+    co "/main"
