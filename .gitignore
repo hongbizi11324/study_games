@@ -73,3 +73,10 @@ Thumbs.db
 .codelyignore
 .com-unity-codely.json
 CODELY.md
+
+# Unity Plastic SCM 元数据
+.plastic/
+
+# VS Code 工作区设置
+.vscode/
+.vsconfig
