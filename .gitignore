@@ -70,9 +70,12 @@ Thumbs.db
 
 # CodeLY / 团结引擎 AI 插件
 .codely-cli/
+.codely/
 .codelyignore
 .com-unity-codely.json
 CODELY.md
+Assets/Codely/
+Assets/Codely.meta
 
 # Unity Plastic SCM 元数据
 .plastic/
@@ -80,3 +83,7 @@ CODELY.md
 # VS Code 工作区设置
 .vscode/
 .vsconfig
+
+# TextMesh Pro 官方示例/文档（非游戏内容，体积大，导入即带）
+Assets/TextMesh Pro/Examples & Extras/
+Assets/TextMesh Pro/Documentation/

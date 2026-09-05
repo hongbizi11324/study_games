@@ -136,19 +136,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 799a0ff62cd8d254e83fc8925b9531d0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  config: {fileID: 11400000, guid: 3594efacb144cb34cb620969a8d1b9ab, type: 2}
   bodyRenderer: {fileID: 7549030659735467983}
   diedEvent: {fileID: 11400000, guid: 24cd8caaa659b78439de8dfd9a498d7e, type: 2}
-  attackDamage: 1
-  patrolSpeed: 1.5
-  chaseSpeed: 3
-  detectRange: 5
-  loseRange: 7
-  attackRange: 1.2
-  attackDuration: 0.8
-  hurtDuration: 0.3
-  knockbackForce: 4
-  maxHp: 20
-  deathDuration: 0.8
 --- !u!1 &3277234995047657724
 GameObject:
   m_ObjectHideFlags: 0

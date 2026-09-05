@@ -106,8 +106,13 @@ namespace ZaoMeng.Gameplay
         {
             timer = 0f;
             monster.Play(MonsterAnim.Hurt);
-            monster.Rb.velocity = new Vector2(monster.LastHitDirection * monster.KnockbackForce, 2f);
+            // 击退 = 攻击来向的水平力 + 一点垂直弹起
+            // LastHitDirection: 1 表示玩家朝右打，怪物应向右飞；-1 则向左
+            monster.Rb.velocity = new Vector2(
+            monster.LastHitDirection * monster.KnockbackForce,
+            monster.KnockbackUp);                                                // 垂直小弹起（固定值）
         }
+
 
         public void Exit(MonsterStateType next) { }
 

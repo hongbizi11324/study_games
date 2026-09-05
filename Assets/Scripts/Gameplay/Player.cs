@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using ZaoMeng.Data;
 using ZaoMeng.Events;
+using ZaoMeng.Services;
 
 namespace ZaoMeng.Gameplay
 {
@@ -14,15 +15,23 @@ namespace ZaoMeng.Gameplay
         [SerializeField] private SpriteRenderer bodyRenderer;
         [SerializeField] private SpriteRenderer weaponRenderer;
 
+        [Header("M3 打击感")]
+        [SerializeField] private HitStop hitStop;
+
         [Header("事件通道（发布）")]
         [SerializeField] private GameEvent attackEvent;
         [SerializeField] private PlayerHealthEvent healthEvent;
+        [SerializeField] private ScreenShakeEvent shakeEvent;
 
         [Header("重生")]
         [SerializeField] private float respawnDelay = 2f;
         private int hp;
         private bool dead;
         private Vector2 spawnPosition;
+
+        [Header("输入缓冲")]
+        [SerializeField] private float attackBufferWindow = 0.2f;   // 缓冲窗口（秒）
+        private float attackBufferTimer;                            // 缓冲剩余时间
 
         [Header("物理检测")]
         [SerializeField] private Transform groundCheck;
@@ -49,8 +58,9 @@ namespace ZaoMeng.Gameplay
         {
             animator = GetComponent<Animator>();
             rb = GetComponent<Rigidbody2D>();
-            spawnPosition = transform.position;//出生点
+            spawnPosition = transform.position;
         }
+
         private void Start()
         {
             hp = config.MaxHp;
@@ -59,7 +69,6 @@ namespace ZaoMeng.Gameplay
 
         private void Update()
         {
-
             if (dead)
             {
                 rb.velocity = Vector2.zero;
@@ -67,6 +76,35 @@ namespace ZaoMeng.Gameplay
             }
 
             float h = Input.GetAxisRaw("Horizontal");
+
+            // ===== 攻击输入与缓冲（必须放在早退 return 之前）=====
+            if (Input.GetKeyDown(KeyCode.J))
+            {
+                attackEvent.Raise();
+                if (IsAttacking())
+                {
+                    // 攻击中按 J：立即连招（attackN→attackN+1 链箭头随时消费，不打对）
+                    animator.SetTrigger(AttackHash);
+                }
+                else
+                {
+                    // 空闲/受击/跳跃中：记下意图，等能接招时释放
+                    attackBufferTimer = attackBufferWindow;
+                }
+            }
+
+            // 缓冲释放：脱离攻击/受击状态的一瞬间把缓存的出刀意图放出去
+            if (attackBufferTimer > 0f)
+            {
+                attackBufferTimer -= Time.deltaTime;
+                if (!IsBusy())
+                {
+                    animator.SetTrigger(AttackHash);
+                    attackBufferTimer = 0f;
+                }
+            }
+
+            // ===== 移动 =====
             bool running = Input.GetKey(KeyCode.LeftShift);
 
             bool grounded = IsGrounded();
@@ -78,12 +116,6 @@ namespace ZaoMeng.Gameplay
             animator.SetFloat(SpeedHash, Mathf.Abs(h) * (running ? 2f : 1f));
             animator.SetBool(GroundedHash, grounded);
             animator.SetFloat(VSpeedHash, rb.velocity.y);
-
-            if (Input.GetKeyDown(KeyCode.J))
-            {
-                animator.SetTrigger(AttackHash);
-                attackEvent.Raise();
-            }
 
             if (Input.GetKeyDown(KeyCode.K) && jumpCount > 0)
             {
@@ -100,28 +132,41 @@ namespace ZaoMeng.Gameplay
             facing = flip ? 1 : -1;
         }
 
-        // —— ⑤ 新增两个方法 ——
-        /// <summary>被怪物攻击。M3 加受击硬直与击退。</summary>
-        public void TakeDamage(int damage)
+        /// <summary>当前就在攻击动画中（用于“立即连招”判定）。</summary>
+        private bool IsAttacking()
+        {
+            return animator.GetCurrentAnimatorStateInfo(0).IsTag("Attack");
+        }
+
+        /// <summary>忙=攻击中或受击中，忙时暂存攻击输入。</summary>
+        private bool IsBusy()
+        {
+            AnimatorStateInfo info = animator.GetCurrentAnimatorStateInfo(0);
+            return info.IsTag("Attack") || info.IsTag("Hurt");
+        }
+
+        /// <summary>被怪物攻击。fromDirection：击退方向（+1 向右 / -1 向左）。</summary>
+        public void TakeDamage(int damage, float fromDirection)
         {
             if (dead) return;
 
             hp -= damage;
             if (hp < 0) hp = 0;
             healthEvent.Raise(hp, config.MaxHp);
-            animator.SetTrigger(HurtHash);
-           
 
-            if (hp <= 0)
-            {
-                dead = true;
-                StartCoroutine(Respawn());
-            }
+            animator.SetTrigger(HurtHash);
+            shakeEvent?.Request(0.25f, 0.22f);
+            hitStop?.Trigger(0.08f);
+
+            Vector2 knockback = new Vector2(fromDirection * config.HurtKnockbackX, config.HurtKnockbackY);
+            rb.velocity = knockback;
+
+            if (hp <= 0) { dead = true; StartCoroutine(Respawn()); }
         }
 
         private IEnumerator Respawn()
         {
-            yield return new WaitForSeconds(respawnDelay);   // 挂起 2 秒，不阻塞主线程
+            yield return new WaitForSeconds(respawnDelay);
             transform.position = spawnPosition;
             rb.velocity = Vector2.zero;
             hp = config.MaxHp;
@@ -146,6 +191,8 @@ namespace ZaoMeng.Gameplay
                     : config.AttackDamage;
 
                 monster.TakeHit(damage, facing);
+                hitStop?.Trigger();
+                shakeEvent?.Request(isCrit ? 0.2f : 0.12f, isCrit ? 0.18f : 0.1f);
                 Debug.Log($"[战斗] {hitResults[i].name} 受到 {damage} 点伤害{(isCrit ? "（暴击！）" : "")}");
             }
         }
@@ -171,6 +218,5 @@ namespace ZaoMeng.Gameplay
             Vector2 center = (Vector2)transform.position + new Vector2(offsetX * facing, 0f);
             Gizmos.DrawWireCube(center, size);
         }
-
     }
 }

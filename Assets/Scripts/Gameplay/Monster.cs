@@ -1,64 +1,47 @@
-using UnityEngine;
-using ZaoMeng.Events;        // ĞÂÔö£ºMonsterDiedEvent ÔÚÕâ¸öÃüÃû¿Õ¼ä
-using ZaoMeng.Services;      // ĞÂÔö£ºObjectPool ÔÚÕâ¸öÃüÃû¿Õ¼ä
+ï»¿using UnityEngine;
+using ZaoMeng.Data;        // â† æ–°å¢ï¼šMonsterConfig åœ¨è¿™ä¸ªå‘½åç©ºé—´
+using ZaoMeng.Events;
+using ZaoMeng.Services;
 
 namespace ZaoMeng.Gameplay
 {
-    /// <summary>
-    /// Ğ¡¹ÖËŞÖ÷£ºÓµÓĞ×´Ì¬»ú¡¢»º´æ×é¼ş¡¢Ïò×´Ì¬Ìá¹©·şÎñ¡£
-    /// M2-2C ¸ÄÔìÎª"¶ÔÏó³ØÓÑºÃ"£ºprefab ²»±£´æ³¡¾°ÒıÓÃ£¬ÓÉ Spawner Init ×¢Èë¡£
-    /// </summary>
     public class Monster : MonoBehaviour
     {
-        // ===== ³¡¾°ÒıÓÃ£¨prefab ÀïÎŞ·¨±£´æ£¬±ØĞë Init ×¢Èë£©=====
+        // ===== åœºæ™¯å¼•ç”¨ï¼ˆprefab é‡Œæ— æ³•ä¿å­˜ï¼Œå¿…é¡» Init æ³¨å…¥ï¼‰=====
         private Transform target;
         private ObjectPool<Monster> pool;
 
-        [Header("±íÏÖÒıÓÃ")]
+        [Header("æ•°æ®å±‚é…ç½®")]
+        [SerializeField] private MonsterConfig config;   // â† æ–°å¢ï¼šæ‰€æœ‰æ•°å€¼ä»è¿™é‡Œè¯»
+
+        [Header("è¡¨ç°å¼•ç”¨")]
         [SerializeField] private SpriteRenderer bodyRenderer;
 
-        [Header("ÊÂ¼ş")]
+        [Header("äº‹ä»¶")]
         [SerializeField] private MonsterDiedEvent diedEvent;
 
-        [Header("AI ²ÎÊı")]
-        [SerializeField] private int attackDamage = 1;
-        [SerializeField] private float patrolSpeed = 1.5f;
-        [SerializeField] private float chaseSpeed = 3f;
-        [SerializeField] private float detectRange = 5f;
-        [SerializeField] private float loseRange = 7f;
-        [SerializeField] private float attackRange = 1.2f;
-        [SerializeField] private float attackDuration = 0.8f;
-        [SerializeField] private float hurtDuration = 0.3f;
-        [SerializeField] private float knockbackForce = 4f;
-        [SerializeField] private int maxHp = 3;
-        [SerializeField] private float deathDuration = 0.8f;
-
-        public float DeathDuration => deathDuration;
-
-        // M2-2C£ºÓÅÏÈ»Ø¶ÔÏó³Ø£»Èç¹ûÃ»ÓĞ³Ø£¨±ÈÈç¾É³¡¾°ÊÖ¶¯ÍÏµÄ£©£¬»ØÍËµ½Òş²Ø
-        public void Deactivate()
-        {
-            if (pool != null)
-                pool.Release(this);
-            else
-                gameObject.SetActive(false);
-        }
+        // âš ï¸ åˆ æ‰çš„æ—§å­—æ®µï¼šattackDamage / patrolSpeed / chaseSpeed / detectRange /
+        //   loseRange / attackRange / attackDuration / hurtDuration / knockbackForce /
+        //   maxHp / deathDuration â€”â€” å…¨éƒ¨æ¬è¿› configï¼Œä¸‹é¢çš„å±æ€§æ”¹è¯» config
 
         private Rigidbody2D rb;
         private Animator animator;
         private StateMachine<MonsterStateType> fsm;
         private int hp;
 
+        // ===== æ•°å€¼å±æ€§ï¼šå…¨éƒ¨æ”¹ä¸ºè¯» config =====
         public Transform Target => target;
+        public float KnockbackUp => config.KnockbackUp;
         public Rigidbody2D Rb => rb;
-        public float PatrolSpeed => patrolSpeed;
-        public float ChaseSpeed => chaseSpeed;
-        public float DetectRange => detectRange;
-        public float LoseRange => loseRange;
-        public float AttackRange => attackRange;
-        public float AttackDuration => attackDuration;
-        public float HurtDuration => hurtDuration;
-        public float KnockbackForce => knockbackForce;
+        public float PatrolSpeed => config.PatrolSpeed;
+        public float ChaseSpeed => config.ChaseSpeed;
+        public float DetectRange => config.DetectRange;
+        public float LoseRange => config.LoseRange;
+        public float AttackRange => config.AttackRange;
+        public float AttackDuration => config.AttackDuration;
+        public float HurtDuration => config.HurtDuration;
+        public float KnockbackForce => config.KnockbackForce;
+        public float DeathDuration => config.DeathDuration;
         public float DistanceToTarget => Vector2.Distance(transform.position, target.position);
         public float LastHitDirection { get; private set; }
 
@@ -67,7 +50,6 @@ namespace ZaoMeng.Gameplay
             rb = GetComponent<Rigidbody2D>();
             animator = GetComponent<Animator>();
 
-            // Ò»´ÎĞÔ×¢²á×´Ì¬»ú¡£¶ÔÏó³Ø¸´ÓÃÊ±ÕâÀï²»»áÖØĞÂÖ´ĞĞ£¬ËùÒÔ²»×ö Start¡£
             fsm = new StateMachine<MonsterStateType>();
             fsm.Register(new PatrolState(this), MonsterStateType.Chase, MonsterStateType.Hurt, MonsterStateType.Dead);
             fsm.Register(new ChaseState(this), MonsterStateType.Patrol, MonsterStateType.Attack, MonsterStateType.Hurt, MonsterStateType.Dead);
@@ -76,19 +58,16 @@ namespace ZaoMeng.Gameplay
             fsm.Register(new DeadState(this));
         }
 
-        // ¶ÔÏó³Ø Get() Ê±»á SetActive(true)£¬´¥·¢ÕâÀï¡£Ã¿´ÎÖØÉú¶¼´ÓÕâÀï¿ªÊ¼¡£
+        // å¯¹è±¡æ±  Get() æ—¶ SetActive(true) è§¦å‘ï¼Œæ¯æ¬¡é‡ç”Ÿä»è¿™å¼€å§‹
         private void OnEnable()
         {
-            hp = maxHp;
+            hp = config.MaxHp;                 // â† åŸæ¥ hp = maxHpï¼Œç°åœ¨è¯» config
             LastHitDirection = 0f;
             fsm.Start(MonsterStateType.Patrol);
         }
 
         private void Update() => fsm.Tick();
 
-        /// <summary>
-        /// Spawner Éú³Éºóµ÷ÓÃ¡£°Ñ prefab ´æ²»ÁËµÄÒıÓÃ×¢½øÀ´¡£
-        /// </summary>
         public void Init(ObjectPool<Monster> monsterPool, Transform player)
         {
             pool = monsterPool;
@@ -98,7 +77,8 @@ namespace ZaoMeng.Gameplay
         public void OnAttackHit()
         {
             if (DistanceToTarget > AttackRange + 0.3f) return;
-            Target.GetComponent<Player>()?.TakeDamage(attackDamage);
+            float dir = Mathf.Sign(Target.position.x - transform.position.x);
+            Target.GetComponent<Player>()?.TakeDamage(config.AttackDamage, dir);  // â† è¯» config
         }
 
         public void TakeHit(int damage, float direction)
@@ -110,13 +90,19 @@ namespace ZaoMeng.Gameplay
 
             if (hp <= 0)
             {
-                diedEvent?.Raise();                   // ËÀÇ°¹ã²¥£¬Í¨Öª Spawner °²ÅÅÖØÉú
+                diedEvent?.Raise();
                 fsm.ChangeState(MonsterStateType.Dead);
             }
             else
             {
                 fsm.ChangeState(MonsterStateType.Hurt);
             }
+        }
+
+        public void Deactivate()
+        {
+            if (pool != null) pool.Release(this);
+            else gameObject.SetActive(false);
         }
 
         public void ChangeState(MonsterStateType next) => fsm.ChangeState(next);

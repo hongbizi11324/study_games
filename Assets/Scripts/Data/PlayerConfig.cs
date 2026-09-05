@@ -19,6 +19,12 @@ namespace ZaoMeng.Data
         [Range(0f, 1f)] public float CritChance = 0.1f;     // 暴击率
         [Min(1f)] public float CritMultiplier = 2f;         // 暴击倍率
 
+        [Header("受击")]
+        [Min(0f)] public float HurtKnockbackX = 3f;      // 水平击退力度
+        [Min(0f)] public float HurtKnockbackY = 2f;      // 垂直小弹起
+        [Min(0f)] public float HurtStunTime = 0.25f;     // 硬直时间
+
+
         [Header("攻击判定框（选中 Player 时红框可视化）")]
         public Vector2 HitboxSize = new Vector2(0.8f, 0.8f);
         public float HitboxOffsetX = 0.8f;                   // 判定框离角色中心距离
